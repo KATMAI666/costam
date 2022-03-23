@@ -1,0 +1,361 @@
+ThisWorkbook
+
+Private Sub Workbook_Activate()
+With Application
+        .DecimalSeparator = "."
+        .UseSystemSeparators = False
+   End With
+End Sub
+
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+Dim ws As Worksheet
+For Each ws In ThisWorkbook.Worksheets
+    If ws.Name = "temp" Then
+    Application.DisplayAlerts = False
+        ThisWorkbook.Sheets("temp").Delete
+    Application.DisplayAlerts = True
+        Exit For
+    End If
+Next ws
+End Sub
+
+Private Sub Workbook_Deactivate()
+With Application
+        .DecimalSeparator = ","
+        .UseSystemSeparators = True
+    End With
+End Sub
+
+Funkcje
+Option Explicit
+
+Function pLik() As String
+Dim nAzwa As String
+nAzwa = "P:\UMA-PL\Operations\SnS\SAP Stock Download\EAP_WMSTOCK_RPT_"
+If IsDate(pAnel.wLasny_dzien.Value) Then
+    pLik = Dir(nAzwa & dAtadzis & "_*.csv")
+Else
+    If Hour(Now) > 5.9 And Hour(Now) < 13.9 Then
+        pLik = Dir(nAzwa & dAtadzis & "_04*.csv")
+    ElseIf Hour(Now) > 13.9 And Hour(Now) < 21.9 Then
+        pLik = Dir(nAzwa & dAtadzis & "_12*.csv")
+    Else
+        pLik = Dir(nAzwa & dAtadzis & "_20*.csv")
+    End If
+End If
+End Function
+
+Function dAtadzis() As String
+Dim dAg As Date
+Dim mIesiac, dZien As String
+
+If IsDate(pAnel.wLasny_dzien.Value) Then
+    dAg = pAnel.wLasny_dzien.Value
+Else
+    dAg = Now
+    'dAg = ThisWorkbook.Sheets("materialy").Range("AM2")
+End If
+    
+If DatePart("m", dAg) < 10 Then
+    mIesiac = "0" & DatePart("m", dAg)
+Else
+    mIesiac = DatePart("m", dAg)
+End If
+
+If DatePart("d", dAg) < 10 Then
+    dZien = "0" & DatePart("d", dAg)
+Else
+    dZien = DatePart("d", dAg)
+End If
+
+dAtadzis = DatePart("yyyy", dAg) & mIesiac & dZien
+End Function
+
+Function pOp_dat(dAt As String) As Date
+pOp_dat = DateSerial(Right(dAt, 4), Mid(dAt, 4, 2), Left(dAt, 2))
+End Function
+
+Function RangeToArray(ByVal my_range As Range) As String()
+
+Dim vArray As Variant
+Dim sArray() As String
+Dim i As Long
+
+vArray = my_range.Value
+ReDim sArray(1 To UBound(vArray))
+
+For i = 1 To UBound(vArray)
+    sArray(i) = vArray(i, 1)
+Next
+
+RangeToArray = sArray()
+
+End Function
+
+Function lIcznik() As String
+Select Case Application.International(xlCountryCode)
+    Case 1:                      ' ENG/USA powinno być 1
+        lIcznik = "Total"
+    Case 48:                     'Polska
+        lIcznik = "Suma"
+    Case Else:                   'w kazdym innym przypadku
+        MsgBox "Proszę o użycie języka polskiego lub angielskiego do obsługi pliku."
+        Exit Function
+End Select
+
+End Function
+
+Sub oTworz()
+Dim ws As Worksheet
+For Each ws In ThisWorkbook.Worksheets
+    If ws.Name = "temp" Then
+    Application.DisplayAlerts = False
+        ThisWorkbook.Sheets("temp").Delete
+    Application.DisplayAlerts = True
+        Exit For
+    End If
+Next ws
+
+    If Len(pLik) = 0 Then
+        Exit Sub
+    End If
+ThisWorkbook.Sheets.Add(After:=Sheets(Sheets.Count)).Name = "temp"
+    
+    With ThisWorkbook.Sheets("temp").QueryTables.Add(Connection:="TEXT;P:\UMA-PL\Operations\SnS\SAP Stock Download\" & pLik, Destination:=Range("$A$1"))
+        .Name = "EAP_WMSTOCK"
+        .FieldNames = True
+        .RowNumbers = False
+        .FillAdjacentFormulas = False
+        .PreserveFormatting = True
+        .RefreshOnFileOpen = False
+        .RefreshStyle = xlInsertDeleteCells
+        .SavePassword = False
+        .SaveData = True
+        .AdjustColumnWidth = True
+        .RefreshPeriod = 0
+        .TextFilePromptOnRefresh = False
+        .TextFilePlatform = 65001
+        .TextFileStartRow = 5
+        .TextFileParseType = xlDelimited
+        .TextFileTextQualifier = xlTextQualifierDoubleQuote
+        .TextFileConsecutiveDelimiter = False
+        .TextFileTabDelimiter = True
+        .TextFileSemicolonDelimiter = False
+        .TextFileCommaDelimiter = True
+        .TextFileSpaceDelimiter = False
+        .TextFileColumnDataTypes = Array(1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+        .TextFileTrailingMinusNumbers = True
+        .Refresh BackgroundQuery:=False
+    End With
+    ThisWorkbook.Sheets("temp").QueryTables("EAP_WMSTOCK").Delete
+End Sub
+
+Podstawowe
+Option Explicit
+Sub mAgazyny()
+    
+    Set mAterialy = ThisWorkbook.Sheets("materialy")
+    With ThisWorkbook.Sheets("wypelnienie")
+        lRow = .Cells(.Rows.Count, "A").End(xlUp).Row + 1
+    End With
+    If IsDate(pAnel.wLasny_dzien.Value) Then
+        dAta_wypelnienie = pAnel.wLasny_dzien.Value
+    Else
+        dAta_wypelnienie = Date
+    End If
+    If ThisWorkbook.Sheets("wypelnienie").Range("A" & lRow - 1) >= dAta_wypelnienie Then
+        Exit Sub
+    Else
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+    ThisWorkbook.Sheets("wypelnienie").Range("A" & lRow) = dAta_wypelnienie
+    
+    For i = 1 To 21
+        With mAterialy
+            dOlny = .Cells(.Rows.Count, i).End(xlUp).Row
+        End With
+        If dOlny < 3 Then
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=RangeToArray(mAterialy.Cells(2, i).Resize(2, 1)), Operator:=xlFilterValues
+        Else
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=1, Criteria1:=RangeToArray(mAterialy.Cells(2, i).Resize(dOlny - 1, 1)), Operator:=xlFilterValues
+        End If
+        ThisWorkbook.Sheets("wypelnienie").Range(mAterialy.Cells(2, i).Value & lRow) = iLosc
+    Next i
+    End If
+    ThisWorkbook.Sheets("wypelnienie").Activate
+
+End Sub
+
+Sub wCzytanie()
+Dim lRow As Long, dOlny As Long, i As Integer
+Dim iLosc As Range
+Dim mAterialy As Worksheet
+Dim dAta_wypelnienie As Date
+
+oTworz
+    With ThisWorkbook.Sheets("temp")
+        lRow = .Cells(.Rows.Count, "A").End(xlUp).Row
+        .ListObjects.Add(xlSrcRange, Range("$A$1:$Z" & lRow), , xlYes).Name = "Wejsciowe"                                            'tworzenie tabeli
+        .Range("T1") = "Dni od ostatniego przesunięcia"
+        .Range("T2") = "=today()-pOp_dat([@[Date (Last mvt)]])"
+        .Range("Z1") = "Dni do końca terminu ważności"
+        .Range("Z2") = "=pOp_dat([@[SLED/BBD]])-today()"
+        .Columns("T:Z").NumberFormat = "General"
+        .Columns("L:L").HorizontalAlignment = xlCenter
+        .ListObjects("Wejsciowe").Range.AutoFilter
+        .ListObjects("Wejsciowe").ShowTotals = True
+        .ListObjects("Wejsciowe").ListColumns("Stg Type").TotalsCalculation = xlTotalsCalculationCount
+    End With
+    If Len(lIcznik) = 0 Then
+        Exit Sub
+    End If
+    Set iLosc = ThisWorkbook.Sheets("temp").Columns("A:A").Find(lIcznik).Offset(0, 8)
+    
+    If pAnel.wLasny_dzien.Value <> vbNullString Then
+        Exit Sub
+    End If
+    If Weekday(Date, vbMonday) = 2 Then
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("FOF"), Operator:=xlFilterValues                      'FOF MAFFU
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=10, Criteria1:=Array("MAFFU"), Operator:=xlFilterValues
+        If iLosc > 0 Then
+            Call cDo_mail(1, lRow)
+        End If
+    End If
+        
+    If Weekday(Date, vbMonday) = 4 Or Weekday(Date, vbMonday) = 2 Then
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("FSP"), Operator:=xlFilterValues                      'FSP HOLD
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=10, Criteria1:="=H*"
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=20, Criteria1:=">=3", Operator:=xlFilterValues
+        If iLosc > 0 Then
+            Call cDo_mail(2, lRow)
+        End If
+                                                                                                                                                            
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("FSP"), Operator:=xlFilterValues                        'FSP Rework                                                                                                                                 'FSP REWORK
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=10, Criteria1:="=R*"
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=20, Criteria1:=">=3", Operator:=xlFilterValues
+        If iLosc > 0 Then
+            Call cDo_mail(3, lRow)
+        End If
+    End If
+    
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("FOD", "FO2"), Operator:=xlFilterValues                      'FOD i FO2
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=10, Criteria1:=Array("dok_zal", "DOK_ZAL_CH"), Operator:=xlFilterValues
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=20, Criteria1:=">=2", Operator:=xlFilterValues
+    If iLosc > 0 Then
+        Call cDo_mail(4, lRow)
+    End If
+    
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("OBD"), Operator:=xlFilterValues                           'OBD
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=10, Criteria1:=Array("HOLD", "REWORK"), Operator:=xlFilterValues
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=20, Criteria1:=">=2", Operator:=xlFilterValues
+    If iLosc > 0 Then
+        Call cDo_mail(5, lRow)
+    End If
+    
+    If Weekday(Date, vbMonday) = 3 Then
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=8, Criteria1:=Array("RP01", "RP02"), Operator:=xlFilterValues                     'materiały na RP01/RP02 w S
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=6, Criteria1:=("S"), Operator:=xlFilterValues
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("FA2", "FAN", "FB2", "FC2", "FCW", "FF2", "FP2", "FPB", "FPR", "FR2", "FRD", "P4D", "PD4", "PH4", "PP1", "PP2", "PP3", "PP4", "PS1", "PS2", "PS3", "PS4", "PSD", "PHP", "PHD", "P01", "P02", "P04", "P31"), Operator:=xlFilterValues
+        If iLosc > 0 Then
+            Call cDo_mail(6, lRow)
+        End If
+    End If
+    
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=">=900", Operator:=xlAnd, Criteria2:="<1000"                      '9??
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=20, Criteria1:=">=1", Operator:=xlFilterValues
+    If iLosc > 0 Then
+        Call cDo_mail(9, lRow)
+    End If
+    
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("PS1", "PS2", "PS3", "PS4"), Operator:=xlFilterValues              'PS-y
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=20, Criteria1:=">=2", Operator:=xlFilterValues
+    If iLosc > 0 Then
+        Call cDo_mail(10, lRow)
+    End If
+    
+    If Weekday(Date, vbMonday) = 3 Then
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=8, Criteria1:=("RP01"), Operator:=xlFilterValues                      'materiały na RP01/RP02 SLED < 30 days
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=Array("FPR", "FCW", "FRD", "FOF", "FP2", "FC2", "FR2"), Operator:=xlFilterValues
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=26, Criteria1:="<30", Operator:=xlFilterValues
+        If iLosc > 0 Then
+            Call cDo_mail(7, lRow)
+        End If
+
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=8, Criteria1:=("FG01"), Operator:=xlFilterValues                      ' na FG01 SLED < 60 days
+        ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=26, Criteria1:="<60", Operator:=xlFilterValues
+        If iLosc > 0 Then
+            Call cDo_mail(8, lRow)
+        End If
+    End If
+End Sub
+
+Sub stany()
+
+Dim lRow As Long, dOlny As Long, i As Byte
+Dim iTer As Byte, dOk As String
+Dim iLosc As Range
+Dim mAterialy As Worksheet
+Dim dAta_wypelnienie As Date
+Dim pAlety As Workbook
+
+oTworz
+    With ThisWorkbook.Sheets("temp")
+        lRow = .Cells(.Rows.Count, "A").End(xlUp).Row
+    End With
+    ThisWorkbook.Sheets("temp").ListObjects.Add(xlSrcRange, Range("$A$1:$Z" & lRow), , xlYes).Name = "Wejsciowe"                                            'tworzenie tabeli
+    
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").ShowTotals = True
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").ListColumns("Stg Type").TotalsCalculation = xlTotalsCalculationCount
+    If Len(lIcznik) = 0 Then
+        Exit Sub
+    End If
+    Set iLosc = ThisWorkbook.Sheets("temp").Columns("A:A").Find(lIcznik).Offset(0, 8)
+    
+    Set mAterialy = ThisWorkbook.Sheets("materialy")
+    
+    ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+    ThisWorkbook.Sheets("stany").Range("dane_stany").ClearContents
+    For iTer = 1 To 2 Step 1
+        If iTer = 1 Then
+        dOk = "FRD"
+        ElseIf iTer = 2 Then
+        dOk = "FR2"
+        End If
+    For i = 27 To 37
+        With mAterialy
+            dOlny = .Cells(.Rows.Count, i).End(xlUp).Row
+        End With
+        If dOlny < 6 Then
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=(mAterialy.Cells(iTer, i)) 'RangeToArray(mAterialy.Cells(1, i).Resize(2, 1)), Operator:=xlFilterValues
+        Else
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=9, Criteria1:=(dOk), Operator:=xlOr, Criteria2:=(mAterialy.Cells(iTer, i))
+            ThisWorkbook.Sheets("temp").ListObjects("Wejsciowe").Range.AutoFilter Field:=1, Criteria1:=RangeToArray(mAterialy.Cells(6, i).Resize(dOlny, 1)), Operator:=xlFilterValues
+        End If
+        ThisWorkbook.Sheets("stany").Range(mAterialy.Cells(3 + iTer, i)) = iLosc
+    Next i
+    Next iTer
+        
+    Set pAlety = Workbooks.Open("P:\UMA-PL\Operations\WHS & SAPBooker\07. STOCK\Liczenie palet.xlsm", , True)
+    Set iLosc = pAlety.Sheets("Historia").Columns("A:A").Find(Date)
+    If Not iLosc Is Nothing Then
+        For iTer = 1 To 2 Step 1
+            For i = 1 To 4 Step 1
+                ThisWorkbook.Sheets("stany").Cells(19 * iTer, 2 * i) = pAlety.Sheets("Historia").Cells(iLosc.Row, (iTer - 1) * 10 + i + 1)
+            Next i
+        Next iTer
+    End If
+    pAlety.Close False
+    cDo_mail (11)
+    ThisWorkbook.Sheets("wypelnienie").Activate
+If Hour(Now) = 7 Then
+    wCzytanie
+End If
+End Sub
+
+
